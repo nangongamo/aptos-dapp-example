@@ -1,21 +1,26 @@
 import React, { useEffect, useState } from "react";
 import { Types, AptosClient } from 'aptos';
 import Button from '@mui/material/Button';
-import SendIcon from '@mui/icons-material/Send';
+import WalletIcon from '@mui/icons-material/Wallet';
 import Alert from '@mui/material/Alert';
 import Snackbar from '@mui/material/Snackbar';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
+import { BigNumber } from "bignumber.js";
+import copy from 'copy-to-clipboard';
 
 const client = new AptosClient('https://fullnode.testnet.aptoslabs.com');
 
+const TYPE_APTOS_COIN = '0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>';
+
 function AptosWallet() {
 
-    const [connectStatus, setConnectStatus] = useState<boolean | null>(null);
+    const [connectStatus, setConnectStatus] = useState<boolean>();
     const [connectText, setConnectText] = useState<string | null>('Connect Wallet');
     const [address, setAddress] = useState('');
     const [openTip, setOpenTip] = useState(false);
     const [tipMsg, setTipMsg] = useState('');
+    const [apt, setApt] = useState('0');
 
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
     const openMenuItem = Boolean(anchorEl);
@@ -46,15 +51,16 @@ function AptosWallet() {
                 window.aptos.isConnected().then((data: boolean) => {
                     setConnectStatus(data);
                     setOpenTip(true);
-                    localStorage.setItem("aptosWallet", "Petra");
                     window.aptos.account().then((data: { address: string }) => {
                         setAddress(data.address);
                         setConnectText(data.address.substring(0, 6) + '...' + data.address.substring(data.address.length - 4));
-                        client.getAccountResource(data.address, '0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>').then((result: Types.MoveResource) => {
-                            console.log(result);
+                        client.getAccountResource(data.address, TYPE_APTOS_COIN).then((result: Types.MoveResource) => {
+                            let coin = (result.data) && (result.data as any)['coin'];
+                            let coinAmt = coin && (coin as any)['value'];
+                            setApt(new BigNumber(coinAmt).div(100000000).toString());
                         });
                     });
-                    setTipMsg('钱包已连接上！');
+                    setTipMsg('Connection Succeeded！');
                 });
             });
             return;
@@ -66,6 +72,13 @@ function AptosWallet() {
         setAnchorEl(null);
     };
 
+    const handleCopyAddress = () => {
+        copy(address);
+        setOpenTip(true);
+        setTipMsg('copied！');
+        setAnchorEl(null);
+    };
+
     const handleDisconnect = () => {
         window.aptos.disconnect().then(() => {
             window.aptos.isConnected().then((data: boolean) => {
@@ -73,8 +86,7 @@ function AptosWallet() {
                 setConnectStatus(data);
                 setOpenTip(true);
                 setAddress('');
-                localStorage.removeItem("aptosWallet");
-                setTipMsg('已断开连接了！');
+                setTipMsg('Disconnected！');
             });
         });
     }
@@ -85,7 +97,7 @@ function AptosWallet() {
                 aria-controls={openMenuItem ? 'basic-menu' : undefined}
                 aria-haspopup="true"
                 aria-expanded={openMenuItem ? 'true' : undefined}
-                endIcon={<SendIcon />}
+                endIcon={<WalletIcon />}
                 onClick={handleDropMenu} >
                 {connectText}
             </Button>
@@ -103,8 +115,8 @@ function AptosWallet() {
                     'aria-labelledby': 'basic-button',
                 }}
             >
-                <MenuItem onClick={handleCloseMenu}>100 APT</MenuItem>
-                <MenuItem onClick={handleCloseMenu}>Copy Address</MenuItem>
+                <MenuItem onClick={handleCloseMenu}>{apt} APT</MenuItem>
+                <MenuItem onClick={handleCopyAddress}>Copy Address</MenuItem>
                 <MenuItem onClick={handleDisconnect}>Disconnect</MenuItem>
             </Menu>
             <p>{address}</p>
