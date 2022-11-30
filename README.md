@@ -3,4 +3,6 @@
 ### Aptos Wallet
 
 - [X] [Petra Aptos Wallet](./wallet/petra-aptos-wallet)
-- [ ] [Martian Wallet](./wallet/martian-wallet)
+- [x] [Martian Wallet](./wallet/martian-wallet)
+- [ ] [Aptos-Wallet-Adapter]()
+
